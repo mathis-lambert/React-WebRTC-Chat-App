@@ -5,7 +5,8 @@ const io = require("socket.io")(http, {
     cors: {
         origin: ["https://chat-app.mathislambert.fr", "http://localhost:3000"],
         methods: ["GET", "POST"],
-    }
+    },
+    path: "/api/socket.io",
 });
 const {v4: uuidv4} = require('uuid');
 
