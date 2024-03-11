@@ -1,3 +1,6 @@
+// add DEBUG=socket.io* to see debug logs
+process.env.DEBUG = "socket.io*";
+
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
@@ -9,6 +12,7 @@ const io = require("socket.io")(http, {
     path: "/api/socket.io",
 });
 const {v4: uuidv4} = require('uuid');
+
 
 // ### @NOTE ###
 // utilisation du package crypto pour générer un uuid unique pour gérer les reconnections
