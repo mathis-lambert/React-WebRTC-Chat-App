@@ -1,46 +1,25 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const io = require("socket.io")(http, {
+    cors: {
+        origin: ["https://chat-app.mathislambert.fr", "http://localhost:3000"],
+        methods: ["GET", "POST"],
+    }
+});
 const {v4: uuidv4} = require('uuid');
 
 // ### @NOTE ###
 // utilisation du package crypto pour générer un uuid unique pour gérer les reconnections
 const crypto = require("crypto");
-const {json} = require("express");
 // /////////////
 
 // Create an array to store connected sockets
 let connectedSockets = [];
 
-// rooms
-let rooms = {};
-
+// Constants
 const discussions = {}
-
 const calls = {};
-
-let discussion = {
-    "uuidv4": {
-        "name": "test",
-        "creator": {
-            "id": "user_id",
-            "pseudo": "test"
-        },
-        "members": [
-            {
-                "id": "user_id",
-                "pseudo": "test"
-            },
-            {
-                "id": "user_id",
-                "pseudo": "test"
-            }
-        ],
-        "messages": [],
-        "inCall": false,
-    }
-}
 
 function updateConnectedUsers(data, socket) {
     console.log("Updating connected users for discussion: " + data.discussion + " for user: " + socket.id)
@@ -58,6 +37,12 @@ function updateConnectedUsers(data, socket) {
         }
     }
 }
+
+app.get("/", (req, res) => {
+    console.log("WebRTC server is running" + req.url)
+    res.send("WebRTC server is running");
+});
+
 
 io.on("connection", (socket) => {
     console.log("New user connected : " + socket.id);
@@ -264,6 +249,12 @@ io.on("connection", (socket) => {
         // Send to all clients the updated list of connected users
         io.emit("liste_utilisateurs_connectes", JSON.stringify(connectedSockets));
     });
+});
+
+// on * routes
+app.get("*", (req, res) => {
+    console.log("Client requested a non-existing page: " + req.url);
+    res.send("404 - Page not found");
 });
 
 const port = process.env.PORT || 3001;
