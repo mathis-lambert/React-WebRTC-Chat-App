@@ -1,6 +1,5 @@
 import {useEffect, useState} from "react";
-import {userIF} from "../scripts/WebRTCPeerConnection.ts";
-
+import {userIF} from "../Interfaces/Interfaces";
 interface UserListProps {
     self: userIF;
     connectedUsers: userIF[];

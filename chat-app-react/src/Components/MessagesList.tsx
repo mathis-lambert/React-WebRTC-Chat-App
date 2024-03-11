@@ -1,7 +1,7 @@
 import {useEffect, useState, useRef} from "react";
 import {socketConn} from "../Socket/socket.ts";
-import {userIF} from "../scripts/WebRTCPeerConnection.ts";
 import {useLocation} from "react-router-dom";
+import {userIF} from "../Interfaces/Interfaces.ts";
 
 interface MessagesListProps {
     connectedUsers: userIF[];
