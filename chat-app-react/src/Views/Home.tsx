@@ -27,9 +27,9 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
     const [inCall, setInCall] = useState(false);
     const [calling, setCalling] = useState(false);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
-    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    // const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
-    const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+    // const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
     const localScreenSharingRef = useRef<HTMLVideoElement | null>(null);
 
     const [webRTCManager, setWebRTCManager] = useState<WebRTCManager | null>(null);
@@ -186,7 +186,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
         if (source === 'local') {
             if (localVideoRef.current) {
                 console.log("Setting local video")
-                setLocalStream(stream);
+                // setLocalStream(stream);
                 localVideoRef.current.srcObject = stream;
             } else {
                 console.error("Local video ref is null")
@@ -257,7 +257,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
             )}
             <div id="chat-container">
                 <div className="left">
-                    {!createDiscussion && (
+                    {!createDiscussion && inDiscussion && (
                         <>
                             <div>
                                 <p id="speaking-to">{speakingTo}</p>
