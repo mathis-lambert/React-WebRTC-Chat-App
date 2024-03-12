@@ -13,7 +13,7 @@ interface MessageIF {
     username: string,
     id: socketID,
     text: string,
-    to: socketID
+    to: socketID,
 }
 interface DiscussionIF {
     name: string,

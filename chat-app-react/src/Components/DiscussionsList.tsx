@@ -7,9 +7,10 @@ interface DiscussionProps {
     createDiscussion: () => void;
     connectedUsers: userIF[];
     self: userIF;
+    setSpeakingTo: (user: string) => void;
 }
 
-const DiscussionsList = ({createDiscussion, connectedUsers, self}: DiscussionProps) => {
+const DiscussionsList = ({createDiscussion, connectedUsers, self, setSpeakingTo}: DiscussionProps) => {
     const [discussions, setDiscussions] = useState<DiscussionsIF | object>({});
 
     useEffect(() => {
@@ -40,15 +41,21 @@ const DiscussionsList = ({createDiscussion, connectedUsers, self}: DiscussionPro
                 {Object.values(discussions).length === 0 && <li>Aucune discussion</li>}
                 {Object.values(discussions).map((discussion: DiscussionIF, index: number) => {
                     if (discussion.name === "" && discussion.members.length === 2) {
-                        const otherUser = connectedUsers.find((user) => user.uuid !== self.uuid)?.username || "Utilisateur inconnu";
-                        return <li key={index}><Link
-                            className={"open-discussion"}
-                            to={`/discussion/${discussion.uuid}`}>Discussion avec {otherUser}</Link>
-                        </li>
+                        const otherUser = connectedUsers.find((user) => user.uuid !== self.uuid && user.uuid === discussion.members.find((member) => member === user.uuid));
+                        if (otherUser) {
+                            return <li key={index}><Link
+                                className={"open-discussion"}
+                                to={`/discussion/${discussion.uuid}`}
+                                onClick={() => setSpeakingTo(otherUser.username)}
+                            >{otherUser.username}</Link>
+                            </li>
+                        }
                     }
                     return <li key={index}><Link
                         className={"open-discussion"}
-                        to={`/discussion/${discussion.uuid}`}>{discussion.name}</Link>
+                        to={`/discussion/${discussion.uuid}`}
+                        onClick={() => {setSpeakingTo(discussion.name)}}
+                    >{discussion.name}</Link>
                     </li>
                 })}
             </ul>

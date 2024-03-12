@@ -2,11 +2,12 @@ import {Socket} from "socket.io-client";
 import {PeersIF, ReceiveAnswerIF, ReceiveIceCandidateIF, ReceiveOfferIF, userIF} from "../Interfaces/Interfaces.ts";
 
 interface callbacksIF {
-    setLocalStream: (stream: MediaStream) => void;
-    setLocalScreen: (stream: MediaStream) => void;
     setRemoteStreams: (streams: MediaStream[]) => void;
     acceptIncomingCall: (offer: ReceiveOfferIF) => void;
     setInCall: (inCall: boolean) => void;
+    setIsSharingScreen: (isSharing: boolean) => void;
+    setConnectionState: (state: string) => void;
+    setCalling: (calling: boolean) => void;
 }
 
 type SocketID = string;
@@ -117,9 +118,23 @@ class WebRTCManager {
             }
         }
 
-        this.peers[socketId].oniceconnectionstatechange = (event) => {
-            console.log(`Connection state change: ${this.peers[socketId].connectionState}`);
-            console.log(event);
+        this.peers[socketId].oniceconnectionstatechange = () => {
+            console.log(`Connection state change: ${this.peers[socketId].iceConnectionState}`);
+
+            this.callbacks.setConnectionState(this.peers[socketId].iceConnectionState);
+
+            if (this.peers[socketId].iceConnectionState === "connected") {
+                this.callbacks.setCalling(false);
+                this.callbacks.setInCall(true);
+            }
+
+            if (this.peers[socketId].iceConnectionState === "failed") {
+                this.endCall();
+            }
+
+            if (this.peers[socketId].iceConnectionState === "disconnected") {
+                this.endCall();
+            }
         };
     }
 
@@ -181,7 +196,6 @@ class WebRTCManager {
                 video: type === 'video',
                 audio: type === 'audio' || type === 'video'
             });
-            this.callbacks.setLocalStream(this.localStream);
         } catch (e) {
             console.error("Error getting local stream: ", e);
         }
@@ -190,10 +204,46 @@ class WebRTCManager {
     getLocalScreen = async () => {
         try {
             this.localScreen = await navigator.mediaDevices.getDisplayMedia({video: true, audio: true});
-            this.callbacks.setLocalScreen(this.localScreen);
         } catch (e) {
             console.error("Error getting local screen: ", e);
         }
+    }
+
+    shareScreen = async () => {
+        await this.getLocalScreen();
+        if (!this.peers) console.warn("No peer connections to add stream to");
+
+        for (const peer in this.peers) {
+            const senders = this.peers[peer].getSenders().find(sender => sender.track ? sender.track.kind === 'video' : false);
+
+            if (senders) {
+                await senders.replaceTrack(this.localScreen.getVideoTracks()[0]);
+            } else {
+                this.localScreen.getTracks().forEach(track => {
+                    console.log("Adding track to peer: ", peer);
+                    this.peers[peer].addTrack(track, this.localScreen);
+                });
+            }
+        }
+
+        this.callbacks.setIsSharingScreen(true);
+    }
+
+    stopSharingScreen = async () => {
+        if (!this.localScreen) return;
+
+        if (this.verbose) console.log("Stopping screen share");
+
+        for (const peer in this.peers) {
+            const senders = this.peers[peer].getSenders().find(sender => sender.track ? sender.track.kind === 'video' : false);
+            if (senders) {
+                await senders.replaceTrack(this.localStream.getVideoTracks()[0]);
+            }
+        }
+
+        this.localScreen.getTracks().forEach(track => track.stop());
+        this.localScreen = new MediaStream();
+        this.callbacks.setIsSharingScreen(false);
     }
 
     handleOffer = async (offer: ReceiveOfferIF) => {
@@ -278,6 +328,10 @@ class WebRTCManager {
          * @returns Promise<void>
          */
         if (this.verbose) console.log("Setting remote description: ", answer.answer);
+        if (!this.peers[answer.sender]) {
+            console.warn("No peer connection for: ", answer.sender);
+            return;
+        }
         this.callbacks.setInCall(true);
         await this.peers[answer.sender].setRemoteDescription(answer.answer);
     }
@@ -337,14 +391,39 @@ class WebRTCManager {
          * @returns void
          */
 
+        // Close the local stream
+        this.localStream.getTracks().forEach(track => track.stop());
+        this.localScreen.getTracks().forEach(track => track.stop());
+
         for (const peer in this.peers) {
             this.peers[peer].close();
             delete this.peers[peer];
         }
+
+        this.reset();
+    }
+
+    reset = () => {
+        this.localStream = new MediaStream();
+        this.localScreen = new MediaStream();
+        this.remoteStreams = [];
+        this.discussion = "";
+        this.type = 'video';
+        this.pendingIceCandidates = {};
+        this.callMembers = [];
+        this.connectedMembers = [];
+        this.callAccepted = false;
+        this.callbacks.setInCall(false);
+        this.callbacks.setIsSharingScreen(false);
+        this.callbacks.setRemoteStreams([]);
     }
 
     setDiscussion = (discussion: string) => {
         this.discussion = discussion;
+    }
+
+    setConnectedUsers = (connectedUsers: userIF[]) => {
+        this.connectedUsers = connectedUsers;
     }
 }
 

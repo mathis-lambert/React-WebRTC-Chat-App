@@ -1,6 +1,7 @@
 import {socketConn} from "../Socket/socket.ts";
 import React, {useEffect, useState} from "react";
 import {userIF} from "../Interfaces/Interfaces.ts";
+import {useLocation, useNavigate} from "react-router-dom";
 
 interface CallbacksIF {
     setUser: (user: userIF) => void;
@@ -9,6 +10,9 @@ interface CallbacksIF {
 
 const LogIn = ({setUser, setLoggedIn}: CallbacksIF) => {
     const [name, setName] = useState("");
+
+    const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
         socketConn.on("utilisateur_connecte", (data) => {
@@ -24,11 +28,16 @@ const LogIn = ({setUser, setLoggedIn}: CallbacksIF) => {
         };
     }, []);
 
+    useEffect(() => {
+        if (location.pathname !== "/") {
+            navigate("/");
+        }
+    }, [location]);
 
     const handleNameFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (name === "") return;
-
+        socketConn.connect();
         socketConn.emit("connexion_utilisateur", name);
     }
 

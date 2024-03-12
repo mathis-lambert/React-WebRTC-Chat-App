@@ -1,5 +1,5 @@
 // add DEBUG=socket.io* to see debug logs
-process.env.DEBUG = "socket.io*";
+// process.env.DEBUG = "socket.io*";
 
 const express = require("express");
 const app = express();

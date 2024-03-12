@@ -1,21 +1,23 @@
-import {useEffect, useState, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
 import {socketConn} from "../Socket/socket.ts";
 import {useLocation} from "react-router-dom";
-import {userIF} from "../Interfaces/Interfaces.ts";
+import {DiscussionIF, MessageIF, userIF} from "../Interfaces/Interfaces.ts";
 
 interface MessagesListProps {
-    connectedUsers: userIF[];
     self: userIF;
 }
 
-const MessagesList = ({connectedUsers, self}: MessagesListProps) => {
-    const [messages, setMessages] = useState<string[]>([]);
+const MessagesList = ({self}: MessagesListProps) => {
+    const [messages, setMessages] = useState<MessageIF[]>([]);
     const messagesRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
 
     const scrollDown = () => {
         if (messagesRef.current) {
+            console.log("Scrolling down");
             messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+        } else {
+            console.error("Message ref is null")
         }
     }
 
@@ -26,6 +28,18 @@ const MessagesList = ({connectedUsers, self}: MessagesListProps) => {
             setMessages(data);
             scrollDown();
         });
+
+        socketConn.on("discussion_info", (data: DiscussionIF) => {
+            // console.log("Discussion info: " + JSON.stringify(data));
+            if (data) {
+                setMessages(data.messages as MessageIF[]);
+            }
+        });
+
+        return () => {
+            socketConn.off("get_liste_messages")
+            socketConn.off("discussion_info")
+        }
     }, [location]);
 
     useEffect(() => {
@@ -38,34 +52,8 @@ const MessagesList = ({connectedUsers, self}: MessagesListProps) => {
             console.log(data.to)
             if (location.pathname.split("/")[2] !== data.to) return;
 
-            const to_user = connectedUsers.find((u) => u.uuid === data.to) || {
-                username: "Utilisateur inconnu",
-                id: "-1",
-                uuid: "-1",
-            };
-            console.log("To user: " + JSON.stringify(to_user));
-
             // Add the message to the page
-            if (data.id === self.id) {
-                console.log(messages);
-
-                setMessages(currentMessages => [...currentMessages, `<div class="message me"><strong>Vous à ${to_user.username}</strong>: ${data.text}</div>`]);
-            } else {
-                // PushState to the url
-                const from = connectedUsers.find((u) => u.id === data.id) || {
-                    username: "Utilisateur inconnu",
-                    id: "-1",
-                    uuid: "-1",
-                };
-
-                //window.history.pushState({}, "", `?to=${from.uuid}`);
-                console.log("From user: " + JSON.stringify(from));
-                console.log(messages);
-                setMessages(currentMessages => [...currentMessages, `<div class="message"><strong>De ${data.username}</strong>: ${data.text}</div>`]);
-            }
-
-            // scroll to the bottom of the chat
-            scrollDown();
+            setMessages(currentMessages => [...currentMessages, data as MessageIF]);
         });
 
         return () => {
@@ -74,27 +62,18 @@ const MessagesList = ({connectedUsers, self}: MessagesListProps) => {
     }, [location]);
 
     useEffect(() => {
-        // // find the user where connected was true but has become false
-        // const disconnectedUser = connectedUsers.find((user) => {
-        //     return tempConnectedUsers.find((u: userIF) => u.id === user.id && !u.connected && user.connected);
-        // });
-        //
-        // setTempConnectedUsers(connectedUsers);
-        //
-        // if (disconnectedUser) {
-        //     setMessages(currentMessages => [...currentMessages, `<div class="event"><strong>${disconnectedUser.username}</strong> &nbsp;vient de se déconnecter</div>`]);
-        // }
-    }, [connectedUsers]);
+        scrollDown();
+    }, [messages])
 
     return (
-        <div className={"message-scroller"}>
-            <div id="messages" ref={messagesRef}>
-                {messages.map((message: string, index: number) => {
-                    let sanitizedMessage = message.replace(/<script/g, "&lt;script").replace(/<\/script>/g, "&lt;/script&gt;");
-                    sanitizedMessage = sanitizedMessage.replace(/<img/g, "&lt;img").replace(/\/>/g, "/&gt;");
-                    sanitizedMessage = sanitizedMessage.replace(/<a/g, "&lt;a").replace(/<\/a>/g, "&lt;/a&gt;");
-                    return <div key={index}
-                                dangerouslySetInnerHTML={{__html: sanitizedMessage}}/>
+        <div className={"message-scroller"} ref={messagesRef}>
+            <div id="messages">
+                {messages.map((message: MessageIF, index: number) => {
+                    return <div key={index} className={'message ' + (message.username === self.username ? "me" : "")}>
+                        {/*<strong>{message.username}: {message.text}</strong>*/}
+                        {message.text}
+                    </div>
+
                 })}
             </div>
         </div>
