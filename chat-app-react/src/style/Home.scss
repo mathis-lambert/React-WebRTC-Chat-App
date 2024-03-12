@@ -404,7 +404,7 @@ a.disconnected, li.disconnected {
 /* on color scheme dark */
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #2D2D2D;
+    background-color: #242424;
     color: #f1f1f1;
   }
 
@@ -440,10 +440,6 @@ a.disconnected, li.disconnected {
 
   .before-chat .form-container form #name-input {
     border: 1px solid #f1f1f1;
-  }
-
-  #chat-container {
-    background-color: #2D2D2D;
   }
 
   #chat-container .left .message-scroller {
