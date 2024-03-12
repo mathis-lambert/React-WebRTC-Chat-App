@@ -6,7 +6,15 @@ import UserList from "../Components/UserList.tsx";
 import MessagesList from "../Components/MessagesList.tsx";
 import DiscussionsList from "../Components/DiscussionsList.tsx";
 import SendMessage from "../Components/SendMessage.tsx";
-import {DiscussionIF, DiscussionsIF, ReceiveOfferIF, userIF} from "../Interfaces/Interfaces.ts";
+import {
+    DiscussionIF,
+    DiscussionsIF,
+    ReceiveOfferIF,
+    SocketID,
+    streamIF,
+    streamListIF,
+    userIF
+} from "../Interfaces/Interfaces.ts";
 import WebRTCManager from "../scripts/WebRTCManager.ts";
 import IncomingCallModal from "../Components/IncomingCallModal.tsx";
 import ScreenSharingOverlay from "../Components/ScreenSharingOverlay.tsx";
@@ -18,7 +26,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
     setLoggedIn: (loggedIn: boolean) => void,
     loggedIn: boolean
 }) => {
-    const [peersStreams, setPeersStreams] = useState<MediaStream[]>([]);
+    const [peersStreams, setPeersStreams] = useState<streamListIF>({});
     const [inDiscussion, setInDiscussion] = useState<boolean>(false);
     const [discussionInfo, setDiscussionInfo] = useState<DiscussionIF | null>(null);
     const [createDiscussion, setCreateDiscussion] = useState<boolean>(false);
@@ -41,7 +49,8 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
 
     useEffect(() => {
         const webRTCManager = new WebRTCManager(socketConn, self, connectedUsers, {
-            setRemoteStreams: setRemoteStreams,
+            updateRemoteStreams: updateRemoteStreams,
+            setRemoteStreams: setPeersStreams,
             acceptIncomingCall: (offer: ReceiveOfferIF) => {
                 setModalIncomingCallData(offer);
                 setModalIncomingCall(true);
@@ -100,6 +109,12 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
         }
     }, [location, loggedIn]);
 
+    const updateRemoteStreams = (socketId: SocketID, stream: streamIF) => {
+        setPeersStreams((prevStreams) => {
+            return {...prevStreams, [socketId]: stream};
+        });
+    }
+
     async function call(type: 'video' | 'audio') {
         const discussionId = location.pathname.split("/")[2];
         if (discussionId === undefined) return;
@@ -144,7 +159,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
             setIsScreenSharing(false);
             setModalIncomingCall(false);
             setModalIncomingCallData(null);
-            setPeersStreams([]);
+            setPeersStreams({});
         }
     }
 
@@ -164,10 +179,6 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                 webRTCManager ? webRTCManager.stopSharingScreen() : null;
             }
         }
-    }
-
-    const setRemoteStreams = (streams: MediaStream[]) => {
-        setPeersStreams(streams);
     }
 
     // handle the disconnect event
@@ -227,7 +238,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                 {(inCall || calling) && (
                     <div className={"left"} id={'call'}>
                         <div>
-                            <p id="call-status">{connectionState}</p>
+                            <div className={"call-status " + (connectionState)}></div>
 
                             <div className="call-buttons" id="call-buttons">
                                 <button id="share-screen" onClick={StartScreenSharing}>Partager
@@ -259,15 +270,18 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                                        }
                                    }}></video>
 
-                            {inCall && calling && (<p>Appel en cours...</p>)}
+                            {calling && (<p>Appel en cours...</p>)}
 
-                            {peersStreams.length > 0 && (
+                            {Object.keys(peersStreams).length > 0 && (
                                 <div id="remote-videos">
-                                    {peersStreams?.map((stream, index) => (
-                                        <video key={index} autoPlay playsInline className={"remote-video"}
-                                               ref={video => {
-                                                   if (video) video.srcObject = stream;
-                                               }}/>
+                                    {Object.values(peersStreams).map((stream, index) => (
+                                        <div key={index} className="remote-video-container">
+                                            <video autoPlay playsInline className={"remote-video"}
+                                                   ref={video => {
+                                                       if (video) video.srcObject = stream.stream;
+                                                   }}/>
+                                            <p className={"stream-name"}>{stream.user.username}</p>
+                                        </div>
                                     ))}
                                 </div>
                             )}

@@ -1,17 +1,27 @@
 import {Socket} from "socket.io-client";
-import {PeersIF, ReceiveAnswerIF, ReceiveIceCandidateIF, ReceiveOfferIF, userIF} from "../Interfaces/Interfaces.ts";
+import {
+    DiscussionID,
+    hangUpIF,
+    PeersIF,
+    ReceiveAnswerIF,
+    ReceiveIceCandidateIF,
+    ReceiveOfferIF,
+    socketID,
+    SocketID,
+    streamIF,
+    streamListIF,
+    userIF
+} from "../Interfaces/Interfaces.ts";
 
 interface callbacksIF {
-    setRemoteStreams: (streams: MediaStream[]) => void;
+    updateRemoteStreams: (socketId: SocketID, stream: streamIF) => void;
+    setRemoteStreams: (streams: streamListIF) => void;
     acceptIncomingCall: (offer: ReceiveOfferIF) => void;
     setInCall: (inCall: boolean) => void;
     setIsSharingScreen: (isSharing: boolean) => void;
     setConnectionState: (state: string) => void;
     setCalling: (calling: boolean) => void;
 }
-
-type SocketID = string;
-type DiscussionID = string;
 
 class WebRTCManager {
     config: RTCConfiguration = {
@@ -24,7 +34,7 @@ class WebRTCManager {
     callbacks: callbacksIF;
     localStream: MediaStream;
     localScreen: MediaStream;
-    remoteStreams: MediaStream[] = [];
+    remoteStreams: streamListIF = {};
     discussion: DiscussionID;
     type: 'video' | 'audio' = 'video';
     pendingIceCandidates: { [key: SocketID]: RTCIceCandidate[] } = {};
@@ -47,7 +57,7 @@ class WebRTCManager {
         this.localStream = new MediaStream();
         this.localScreen = new MediaStream();
 
-        this.remoteStreams = [];
+        this.remoteStreams = {};
         this.discussion = "";
 
         this.init();
@@ -72,7 +82,7 @@ class WebRTCManager {
         this.socket.on("receive_offer", this.handleOffer);
         this.socket.on("receive_answer", this.handleAnswer);
         this.socket.on("receive_ice_candidate", this.handleIceCandidate);
-        this.socket.on("hang_up", this.endCall);
+        this.socket.on("hang_up", this.handleHangUp);
         this.socket.on("call_connected_users", (data) => {
             console.log("Connected users: ", data);
             this.connectedMembers = data.connected_users;
@@ -80,7 +90,7 @@ class WebRTCManager {
         });
     }
 
-    newPeerConnection = async (socketId: string) => {
+    newPeerConnection = async (socketId: socketID) => {
         /**
          * Create a new peer connection for the given socketId and add the local stream to it.
          *
@@ -93,6 +103,8 @@ class WebRTCManager {
 
         if (this.verbose) console.log("Creating new peer connection for: ", socketId);
 
+        socketId = socketId as SocketID;
+
         this.peers[socketId] = new RTCPeerConnection(this.config);
 
         this.peers[socketId].ontrack = (event) => {
@@ -102,9 +114,14 @@ class WebRTCManager {
                     console.log(`Track kind: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}`);
                 });
             }
-            if (this.remoteStreams.includes(event.streams[0])) return;
-            this.remoteStreams.push(event.streams[0]);
-            this.callbacks.setRemoteStreams([...this.remoteStreams]);
+            if (this.remoteStreams[socketId]) {
+                if (this.verbose) console.log("Remote stream already exists for: ", socketId);
+                return;
+            }
+
+            const user: userIF = this.connectedUsers.find(user => user.id === socketId) as userIF;
+            this.remoteStreams[socketId] = {user: user, stream: event.streams[0]};
+            this.callbacks.updateRemoteStreams(socketId, {user: user, stream: event.streams[0]});
         }
 
         this.peers[socketId].onicecandidate = (event) => {
@@ -128,27 +145,51 @@ class WebRTCManager {
                 this.callbacks.setInCall(true);
             }
 
-            if (this.peers[socketId].iceConnectionState === "failed") {
-                this.endCall();
-            }
+            if (this.peers[socketId].iceConnectionState === "failed" || this.peers[socketId].iceConnectionState === "disconnected") {
+                console.log("Call failed or disconnected for: ", socketId);
+                this.peers[socketId].close();
+                delete this.peers[socketId];
 
-            if (this.peers[socketId].iceConnectionState === "disconnected") {
-                this.endCall();
+                if (this.remoteStreams[socketId]) {
+                    delete this.remoteStreams[socketId];
+                    this.callbacks.setRemoteStreams(this.remoteStreams);
+                }
+
+                if (Object.keys(this.peers).length === 0) {
+                    this.callbacks.setInCall(false);
+                    this.endCall();
+                }
             }
         };
     }
 
     addStreamTrack = async (type: 'video' | 'audio') => {
-        await this.getLocalStream(type);
-        if (!this.peers) console.warn("No peer connections to add stream to");
+        if (!this.peers) {
+            console.warn("No peer connections to add stream to");
+            return;
+        }
+
+        // Si le flux local n'est pas encore ajouté, obtenez-le
+        if (this.localStream.getTracks().length === 0) {
+            console.log("Local stream not added yet, getting local stream: ", type);
+            await this.getLocalStream(type);
+        }
 
         this.localStream.getTracks().forEach(track => {
+            // Parcourir chaque connexion peer
             for (const peer in this.peers) {
-                console.log("Adding track to peer: ", peer);
-                this.peers[peer].addTrack(track, this.localStream);
+                const senderAlreadyExists = this.peers[peer].getSenders().some(sender => sender.track === track);
+
+                if (!senderAlreadyExists) {
+                    console.log("Adding track to peer: ", peer);
+                    this.peers[peer].addTrack(track, this.localStream);
+                } else {
+                    console.log("Track already exists in the peer connection: ", peer);
+                }
             }
         });
-    }
+    };
+
 
     createOffer = async (members: string[], discussion: string, type: 'video' | 'audio', initiator: string) => {
         /**
@@ -381,6 +422,17 @@ class WebRTCManager {
         }
     }
 
+    handleHangUp = async (data: hangUpIF) => {
+        console.log("Received hang up: ", data);
+        if (data.sender === this.self.id) {
+            await this.endCall();
+        } else {
+            if (this.peers[data.sender]) {
+                this.peers[data.sender].close();
+            }
+        }
+    }
+
 
     endCall = async () => {
         /**
@@ -390,23 +442,28 @@ class WebRTCManager {
          *
          * @returns void
          */
+        console.log("( WebRTCManager -> endCall() ) | Ending call")
 
         // Close the local stream
         this.localStream.getTracks().forEach(track => track.stop());
         this.localScreen.getTracks().forEach(track => track.stop());
+
+        this.localStream = new MediaStream();
+        this.localScreen = new MediaStream();
 
         for (const peer in this.peers) {
             this.peers[peer].close();
             delete this.peers[peer];
         }
 
+        this.socket.emit('hang_up', {discussion: this.discussion});
         this.reset();
     }
 
     reset = () => {
         this.localStream = new MediaStream();
         this.localScreen = new MediaStream();
-        this.remoteStreams = [];
+        this.remoteStreams = {};
         this.discussion = "";
         this.type = 'video';
         this.pendingIceCandidates = {};
@@ -415,7 +472,7 @@ class WebRTCManager {
         this.callAccepted = false;
         this.callbacks.setInCall(false);
         this.callbacks.setIsSharingScreen(false);
-        this.callbacks.setRemoteStreams([]);
+        this.callbacks.setRemoteStreams({});
     }
 
     setDiscussion = (discussion: string) => {

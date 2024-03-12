@@ -9,6 +9,7 @@ interface MessagesListProps {
 
 const MessagesList = ({self}: MessagesListProps) => {
     const [messages, setMessages] = useState<MessageIF[]>([]);
+    const [discussion, setDiscussion] = useState<DiscussionIF | null>(null);
     const messagesRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
 
@@ -33,6 +34,7 @@ const MessagesList = ({self}: MessagesListProps) => {
             // console.log("Discussion info: " + JSON.stringify(data));
             if (data) {
                 setMessages(data.messages as MessageIF[]);
+                setDiscussion(data);
             }
         });
 
@@ -68,12 +70,10 @@ const MessagesList = ({self}: MessagesListProps) => {
     return (
         <div className={"message-scroller"} ref={messagesRef}>
             <div id="messages">
-                {messages.map((message: MessageIF, index: number) => {
+                {discussion && messages.map((message: MessageIF, index: number) => {
                     return <div key={index} className={'message ' + (message.username === self.username ? "me" : "")}>
-                        {/*<strong>{message.username}: {message.text}</strong>*/}
-                        {message.text}
+                        {discussion?.members.length > 2 && message.username !== self.username && <strong>{message.username}&nbsp;: </strong>}&nbsp;{message.text}
                     </div>
-
                 })}
             </div>
         </div>

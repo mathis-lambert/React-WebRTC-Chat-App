@@ -6,10 +6,8 @@ const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http, {
     cors: {
-        origin: ["https://chat-app.mathislambert.fr", "http://localhost:3000"],
-        methods: ["GET", "POST"],
-    },
-    path: "/api/socket.io",
+        origin: ["https://chat-app.mathislambert.fr", "http://localhost:3000"], methods: ["GET", "POST"],
+    }, path: "/api/socket.io",
 });
 const {v4: uuidv4} = require('uuid');
 
@@ -35,8 +33,7 @@ function updateConnectedUsers(data, socket) {
             calls[data.discussion].members.forEach((m) => {
                 console.log("Sending connected users to: " + m + " for discussion: " + data.discussion);
                 io.to(m).emit('call_connected_users', {
-                    discussion: data.discussion,
-                    connected_users: calls[data.discussion].connected_users
+                    discussion: data.discussion, connected_users: calls[data.discussion].connected_users
                 });
             })
         }
@@ -71,10 +68,7 @@ io.on("connection", (socket) => {
 
             // send back the identity of the user to the client
             let identity = {
-                id: socket.id,
-                username: username,
-                uuid: crypto.randomBytes(32).toString("hex"),
-                connected: true
+                id: socket.id, username: username, uuid: crypto.randomBytes(32).toString("hex"), connected: true
             };
             socket.emit("utilisateur_connecte", JSON.stringify(identity));
 
@@ -107,10 +101,7 @@ io.on("connection", (socket) => {
 
             if (socket.id === data.initiator) {
                 calls[data.discussion] = {
-                    type: data.type,
-                    members: data.members,
-                    connected_users: [socket.id],
-                    initiator: data.initiator,
+                    type: data.type, members: data.members, connected_users: [socket.id], initiator: data.initiator,
                 };
             } else {
                 updateConnectedUsers(data, socket);
@@ -146,9 +137,7 @@ io.on("connection", (socket) => {
     socket.on('send_ice_candidate', (data) => {
         console.log(socket.id + " is sending candidate to:", data.target);
         socket.to(data.target).emit('receive_ice_candidate', {
-            sender: socket.id,
-            candidate: data.candidate,
-            discussion: data.discussion
+            sender: socket.id, candidate: data.candidate, discussion: data.discussion
         });
     });
 
@@ -160,18 +149,39 @@ io.on("connection", (socket) => {
     socket.on('offer_rejected', (data) => {
         console.log("Offer rejected by: " + data.target);
         socket.to(data.target).emit('offer_rejected', {
-            sender: socket.id,
-            target: data.target
+            sender: socket.id, target: data.target
         });
     });
 
     socket.on('hang_up', (data) => {
-        console.log("Hang up by: " + data.target);
-        delete calls[data.discussion];
-        socket.to(data.target).emit('hang_up', {
-            sender: socket.id,
-            target: data.target
-        });
+        console.log("Hanging up for discussion: " + data.discussion);
+
+        // remove user in the call
+        if (calls[data.discussion]) {
+            // remove the user from the connected users
+            calls[data.discussion].connected_users = calls[data.discussion].connected_users.filter((u) => u !== socket.id);
+
+            // send the updated list of connected users to the other members and hang up
+            calls[data.discussion].members.forEach((m) => {
+                let member = connectedSockets.find((s) => s.uuid === m);
+                if (member && member.id && member.connected) {
+                    console.log("Emitting to: " + member.id + " for discussion: " + data.discussion);
+                    socket.to(member.id).emit('call_connected_users', {
+                        discussion: data.discussion, connected_users: calls[data.discussion].connected_users
+                    });
+
+                    socket.to(member.id).emit('hang_up', {
+                        discussion: data.discussion, sender: socket.id
+                    });
+                } else {
+                    console.log("Member not found or not connected: " + m);
+                }
+            });
+
+            if (calls[data.discussion].connected_users.length === 0) {
+                delete calls[data.discussion];
+            }
+        }
     })
 
     // receive a message from the client and send it to all clients
@@ -209,11 +219,7 @@ io.on("connection", (socket) => {
 
         if (creator) {
             let discussion = {
-                name: data.name,
-                uuid: uuidv4(),
-                creator: creator.uuid,
-                members: data.members,
-                messages: []
+                name: data.name, uuid: uuidv4(), creator: creator.uuid, members: data.members, messages: []
             };
 
             discussion.members.push(creator.uuid);

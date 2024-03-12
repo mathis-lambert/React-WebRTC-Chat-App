@@ -87,6 +87,23 @@ interface PeersIF {
     [key: string]: RTCPeerConnection;
 }
 
+interface streamIF {
+    user: userIF;
+    stream: MediaStream;
+}
+
+interface streamListIF {
+    [key: SocketID]: streamIF;
+}
+
+interface hangUpIF {
+    discussion: string,
+    sender: string
+}
+
+type SocketID = string;
+type DiscussionID = string;
+
 
 export type {
     userIF,
@@ -103,5 +120,10 @@ export type {
     ReceiveIceCandidateIF,
     SendIceCandidateIF,
     OfferRejectedIF,
-    PeersIF
+    PeersIF,
+    streamIF,
+    streamListIF,
+    DiscussionID,
+    SocketID,
+    hangUpIF
 }
