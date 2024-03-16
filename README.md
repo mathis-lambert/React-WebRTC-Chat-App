@@ -6,8 +6,8 @@ Run video calls, 1by1 or a group call. Developped with the native WebRTC API wit
 ## Installation
 - clone the repository
 - open 2 terminals
-- `npm run dev` in chat-app-react
-- `npm run start` in chat-app-server
+- `npm i && npm run dev` in chat-app-react
+- `npm i && npm run start` in chat-app-server
 - then point to [http://localhost:3000](http://localhost:3000)
 
 ## Collaboration
