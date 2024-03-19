@@ -90,6 +90,8 @@ interface PeersIF {
 interface streamIF {
     user: userIF;
     stream: MediaStream;
+    status: string;
+
 }
 
 interface streamListIF {

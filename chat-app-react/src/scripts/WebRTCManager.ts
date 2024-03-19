@@ -19,7 +19,6 @@ interface callbacksIF {
     acceptIncomingCall: (offer: ReceiveOfferIF) => void;
     setInCall: (inCall: boolean) => void;
     setIsSharingScreen: (isSharing: boolean) => void;
-    setConnectionState: (state: string) => void;
     setCalling: (calling: boolean) => void;
 }
 
@@ -41,6 +40,8 @@ class WebRTCManager {
     callMembers: string[] = [];
     connectedMembers: string[] = [];
     callAccepted: boolean = false;
+    isCallInitiator: boolean = false;
+    callInitiator: string = "";
 
     verbose: boolean = true;
 
@@ -59,6 +60,7 @@ class WebRTCManager {
 
         this.remoteStreams = {};
         this.discussion = "";
+
 
         this.init();
 
@@ -120,8 +122,8 @@ class WebRTCManager {
             }
 
             const user: userIF = this.connectedUsers.find(user => user.id === socketId) as userIF;
-            this.remoteStreams[socketId] = {user: user, stream: event.streams[0]};
-            this.callbacks.updateRemoteStreams(socketId, {user: user, stream: event.streams[0]});
+            this.remoteStreams[socketId] = {user: user, stream: event.streams[0], status: this.peers[socketId].iceConnectionState};
+            this.callbacks.updateRemoteStreams(socketId, {user: user, stream: event.streams[0], status: this.peers[socketId].iceConnectionState});
         }
 
         this.peers[socketId].onicecandidate = (event) => {
@@ -138,7 +140,10 @@ class WebRTCManager {
         this.peers[socketId].oniceconnectionstatechange = () => {
             console.log(`Connection state change: ${this.peers[socketId].iceConnectionState}`);
 
-            this.callbacks.setConnectionState(this.peers[socketId].iceConnectionState);
+            if (this.remoteStreams[socketId]) {
+                this.remoteStreams[socketId].status = this.peers[socketId].iceConnectionState;
+                this.callbacks.updateRemoteStreams(socketId, this.remoteStreams[socketId]);
+            }
 
             if (this.peers[socketId].iceConnectionState === "connected") {
                 this.callbacks.setCalling(false);
@@ -202,6 +207,9 @@ class WebRTCManager {
          * @returns Promise<void>
          */
         this.setDiscussion(discussion);
+
+        if (initiator === this.self.id) this.isCallInitiator = true;
+
         this.type = type;
         for (const member of members) {
             if (member === this.self.id) continue;
@@ -305,6 +313,8 @@ class WebRTCManager {
 
         if (offer.initiator === offer.sender && !this.callAccepted) {
             if (this.verbose) console.log("Offer initiator is the sender: ", offer.sender);
+            this.callInitiator = offer.initiator;
+
 
             await this.newPeerConnection(offer.sender);
             this.setDiscussion(offer.discussion);
@@ -356,7 +366,7 @@ class WebRTCManager {
             if (member === offer.sender) continue;
             if (this.peers[member]) continue;
             console.log("Creating offer for connected member: ", member);
-            await this.createOffer(this.callMembers, this.discussion, this.type, this.self.id);
+            await this.createOffer(this.callMembers, this.discussion, this.type, offer.initiator);
         }
     }
 
@@ -424,11 +434,14 @@ class WebRTCManager {
 
     handleHangUp = async (data: hangUpIF) => {
         console.log("Received hang up: ", data);
-        if (data.sender === this.self.id) {
+        if (data.sender === this.self.id || data.sender === this.callInitiator) {
             await this.endCall();
         } else {
             if (this.peers[data.sender]) {
                 this.peers[data.sender].close();
+                delete this.peers[data.sender];
+                delete this.remoteStreams[data.sender];
+                this.callbacks.setRemoteStreams(this.remoteStreams);
             }
         }
     }

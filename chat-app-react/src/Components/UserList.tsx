@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {userIF} from "../Interfaces/Interfaces";
+
 interface UserListProps {
     self: userIF;
     connectedUsers: userIF[];
@@ -18,10 +19,9 @@ const UserList = ({self, connectedUsers}: UserListProps) => {
             <h3>Utilisateurs</h3>
             <ul id="users-list">
                 {users.map((user: userIF, index: number) => {
-                    if (user.id === self.id) return;
                     return <li key={index} title={user.connected ? "Connecté" : "Déconnecté"}
-                               className={"open-discussion" + (user.connected ? " connected" : " disconnected")}>
-                        {user.username}
+                               className={"open-discussion" + (user.connected ? " connected " : " disconnected") + (user.id === self.id ? "self" : "")}>
+                        {user.username} {user.id === self.id ? "(Vous)" : ""}
                     </li>
 
                 })}

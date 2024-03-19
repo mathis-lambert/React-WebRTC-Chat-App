@@ -17,6 +17,33 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+button {
+  background-color: #61dafb;
+  border: none;
+  border-radius: 0.5em;
+  color: white;
+  cursor: pointer;
+  font-size: 1.5em;
+  transition: background-color 300ms;
+
+    &:not(:disabled):hover {
+        background-color: #646cff;
+    }
+
+  &:disabled {
+    background-color: #1a1a1a99;
+    color: #888;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: #1a1a1a99;
+      outline: none;
+      border-color: #1a1a1a99;
+      box-shadow: none;
+    }
+  }
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);

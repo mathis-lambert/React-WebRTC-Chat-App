@@ -86,7 +86,7 @@ io.on("connection", (socket) => {
     socket.on('get_liste_discussions', () => {
         let discussions_list = {};
         for (let key in discussions) {
-            if (discussions[key].members.find((m) => m === connectedSockets.find((s) => s.id === socket.id).uuid)) {
+            if (discussions[key].members.find((m) => m === connectedSockets.find((s) => s.id === socket.id)?.uuid)) {
                 discussions_list[key] = discussions[key];
             }
         }
@@ -162,8 +162,9 @@ io.on("connection", (socket) => {
             calls[data.discussion].connected_users = calls[data.discussion].connected_users.filter((u) => u !== socket.id);
 
             // send the updated list of connected users to the other members and hang up
-            calls[data.discussion].members.forEach((m) => {
-                let member = connectedSockets.find((s) => s.uuid === m);
+            calls[data.discussion].connected_users.forEach((m) => {
+                console.log("Sending hang up to: " + m + " for discussion: " + data.discussion);
+                let member = connectedSockets.find((s) => s.id === m);
                 if (member && member.id && member.connected) {
                     console.log("Emitting to: " + member.id + " for discussion: " + data.discussion);
                     socket.to(member.id).emit('call_connected_users', {

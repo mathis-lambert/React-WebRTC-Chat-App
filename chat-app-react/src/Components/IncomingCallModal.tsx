@@ -11,7 +11,7 @@ const IncomingCallModal = ({modalIncomingCall, caller, acceptCall}: IncomingCall
 
     useEffect(() => {
         setCallerName(caller);
-    }, []);
+    }, [caller]);
 
     useEffect(() => {
         if (callerName === undefined) {
