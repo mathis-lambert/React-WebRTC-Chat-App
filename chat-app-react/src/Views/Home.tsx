@@ -43,6 +43,9 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
     const [modalIncomingCall, setModalIncomingCall] = useState(false);
     const [modalIncomingCallData, setModalIncomingCallData] = useState<ReceiveOfferIF | null>(null);
 
+    const [isCallInitiator, setIsCallInitiator] = useState<boolean>(false);
+    const [callInitiator, setCallInitiator] = useState<string>('');
+
     // location object
     const location = useLocation();
     const Navigate = useNavigate();
@@ -57,7 +60,9 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
             },
             setInCall: setInCall,
             setIsSharingScreen: setIsScreenSharing,
-            setCalling: setCalling
+            setCalling: setCalling,
+            setCallInitiator: setCallInitiator,
+            setIsCallInitiator: setIsCallInitiator
         })
 
         setWebRTCManager(webRTCManager);
@@ -238,7 +243,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                     <div className={"left"} id={'call'}>
                         <div>
                             <div className="call-buttons" id="call-buttons">
-                                {(webRTCManager ? webRTCManager.isCallInitiator : false) && (
+                                {isCallInitiator && (
                                     <>
                                         <button id="share-screen" onClick={StartScreenSharing}>Partager
                                             l'écran
@@ -251,12 +256,13 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                                         )}
                                     </>
                                 )}
-                                <button id="hang-up" onClick={StopCall}>Raccrocher
+                                <button id="hang-up" onClick={StopCall}>
+                                    {isCallInitiator ? "Terminer l'appel" : "Quitter l'appel"}
                                 </button>
                             </div>
 
                             <em>
-                                {(webRTCManager ? webRTCManager.isCallInitiator : false) ? "Vous êtes l'animateur" : ''}
+                                {isCallInitiator ? "Vous êtes l'animateur" : ''}
                             </em>
                         </div>
 
@@ -280,7 +286,10 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                             {Object.keys(peersStreams).length > 0 && (
                                 <div id="remote-videos">
                                     {Object.values(peersStreams).map((stream) => (
-                                        <RemoteVideo key={stream.user.id} webRTCManager={webRTCManager} stream={stream.stream} user={stream.user} status={stream.status}/>
+                                        <RemoteVideo key={stream.user.id} webRTCManager={webRTCManager}
+                                                     stream={stream.stream} user={stream.user} status={stream.status}
+                                                    callInitiator={callInitiator} isCallInitiator={isCallInitiator}
+                                        />
                                     ))}
                                 </div>
                             )}

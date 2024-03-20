@@ -94,6 +94,41 @@ io.on("connection", (socket) => {
         socket.emit("liste_discussions", discussions_list);
     });
 
+    socket.on('make_call_initiator', (data) => {
+        console.log("Call request for initiator: " + data.target);
+        if (calls[data.discussion]) {
+            console.log("Making " + data.target + " initiator for the call of the discussion: " + data.discussion);
+            calls[data.discussion].initiator = data.target;
+
+            // send the updated list of connected users to the other members and hang up
+            calls[data.discussion].connected_users.forEach((m) => {
+                console.log("Sending initiator to: " + m + " for discussion: " + data.discussion);
+                let member = connectedSockets.find((s) => s.id === m);
+                if (member && member.id && member.connected) {
+                    console.log("Emitting to: " + member.id + " for discussion: " + data.discussion);
+                    if (member.id === socket.id) {
+                        socket.emit('initiator_update', {
+                            discussion: data.discussion, initiator: data.target
+                        });
+
+                        socket.emit('call_connected_users', {
+                            discussion: data.discussion, connected_users: calls[data.discussion].connected_users
+                        });
+                    } else {
+                        socket.to(member.id).emit('call_connected_users', {
+                            discussion: data.discussion, connected_users: calls[data.discussion].connected_users
+                        });
+                        socket.to(member.id).emit('initiator_update', {
+                            discussion: data.discussion, initiator: data.target
+                        });
+                    }
+                } else {
+                    console.log("Member not found or not connected: " + m);
+                }
+            });
+        }
+    })
+
     // Relayer les offres, réponses et candidats ICE entre les pairs
     socket.on('send_offer', (data) => {
         try {

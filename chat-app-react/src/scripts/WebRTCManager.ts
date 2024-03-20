@@ -20,6 +20,8 @@ interface callbacksIF {
     setInCall: (inCall: boolean) => void;
     setIsSharingScreen: (isSharing: boolean) => void;
     setCalling: (calling: boolean) => void;
+    setCallInitiator: (initiator: string) => void;
+    setIsCallInitiator: (isInitiator: boolean) => void;
 }
 
 class WebRTCManager {
@@ -90,6 +92,19 @@ class WebRTCManager {
             this.connectedMembers = data.connected_users;
             this.discussion = data.discussion;
         });
+        this.socket.on("initiator_update", (data) => {
+            console.log("Initiator update: ", data);
+
+            if (data.discussion !== this.discussion) return;
+
+            console.log("Initiator update for discussion: ", data.discussion);
+
+            this.callInitiator = data.initiator;
+            this.isCallInitiator = data.initiator === this.self.id;
+
+            this.callbacks.setCallInitiator(data.initiator);
+            this.callbacks.setIsCallInitiator(data.initiator === this.self.id);
+        })
     }
 
     newPeerConnection = async (socketId: socketID) => {
@@ -122,8 +137,16 @@ class WebRTCManager {
             }
 
             const user: userIF = this.connectedUsers.find(user => user.id === socketId) as userIF;
-            this.remoteStreams[socketId] = {user: user, stream: event.streams[0], status: this.peers[socketId].iceConnectionState};
-            this.callbacks.updateRemoteStreams(socketId, {user: user, stream: event.streams[0], status: this.peers[socketId].iceConnectionState});
+            this.remoteStreams[socketId] = {
+                user: user,
+                stream: event.streams[0],
+                status: this.peers[socketId].iceConnectionState
+            };
+            this.callbacks.updateRemoteStreams(socketId, {
+                user: user,
+                stream: event.streams[0],
+                status: this.peers[socketId].iceConnectionState
+            });
         }
 
         this.peers[socketId].onicecandidate = (event) => {
@@ -209,6 +232,7 @@ class WebRTCManager {
         this.setDiscussion(discussion);
 
         if (initiator === this.self.id) this.isCallInitiator = true;
+        this.callbacks.setIsCallInitiator(this.isCallInitiator);
 
         this.type = type;
         for (const member of members) {
@@ -314,6 +338,7 @@ class WebRTCManager {
         if (offer.initiator === offer.sender && !this.callAccepted) {
             if (this.verbose) console.log("Offer initiator is the sender: ", offer.sender);
             this.callInitiator = offer.initiator;
+            this.callbacks.setCallInitiator(offer.initiator);
 
 
             await this.newPeerConnection(offer.sender);
@@ -489,6 +514,8 @@ class WebRTCManager {
         this.callbacks.setCalling(false);
         this.isCallInitiator = false;
         this.callInitiator = "";
+        this.callbacks.setCallInitiator("");
+        this.callbacks.setIsCallInitiator(false);
     }
 
     setDiscussion = (discussion: string) => {
