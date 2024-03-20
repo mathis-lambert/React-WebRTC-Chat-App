@@ -24,7 +24,6 @@ const DiscussionsList = ({createDiscussion, connectedUsers, self, setSpeakingTo}
 
     useEffect(() => {
         socketConn.on("liste_discussions", (data) => {
-            // console.log("Liste de discussions: " + JSON.stringify(data));
             setDiscussions(data);
         });
 
@@ -62,7 +61,6 @@ const DiscussionsList = ({createDiscussion, connectedUsers, self, setSpeakingTo}
                         }
                     } else if (discussion.name === "" && discussion.members.length > 2) {
                         const otherUsers = discussion.members.filter((member) => member !== self.uuid).map((member) => connectedUsers.find((user) => user.uuid === member));
-                        console.log(otherUsers);
                         return <li key={index}><Link
                             className={"open-discussion " + selected}
                             to={`/discussion/${discussion.uuid}`}

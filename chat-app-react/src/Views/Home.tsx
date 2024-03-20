@@ -28,6 +28,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
     loggedIn: boolean
 }) => {
     const [peersStreams, setPeersStreams] = useState<streamListIF>({});
+    const [usersInCall, setUsersInCall] = useState<userIF[]>([]);
     const [inDiscussion, setInDiscussion] = useState<boolean>(false);
     const [discussionInfo, setDiscussionInfo] = useState<DiscussionIF | null>(null);
     const [createDiscussion, setCreateDiscussion] = useState<boolean>(false);
@@ -113,6 +114,12 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
         }
     }, [location, loggedIn]);
 
+    useEffect(() => {
+        if (Object.keys(peersStreams).length > 0) {
+            setUsersInCall(Object.values(peersStreams).map((stream) => stream.user));
+        }
+    }, [peersStreams]);
+
     const updateRemoteStreams = (socketId: SocketID, stream: streamIF) => {
         setPeersStreams((prevStreams) => {
             return {...prevStreams, [socketId]: stream};
@@ -182,6 +189,12 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
             if (webRTCManager) {
                 webRTCManager ? webRTCManager.stopSharingScreen() : null;
             }
+        }
+    }
+
+    async function createOfferForNewUser(target: string) {
+        if (webRTCManager && inCall && isCallInitiator) {
+            await webRTCManager.createOffer([target], webRTCManager.discussion, 'video', self.id);
         }
     }
 
@@ -300,7 +313,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                 <div className="right">
                     <DiscussionsList createDiscussion={() => setCreateDiscussion(true)} self={self}
                                      connectedUsers={connectedUsers} setSpeakingTo={setSpeakingTo}/>
-                    <UserList self={self} connectedUsers={connectedUsers}/>
+                    <UserList self={self} connectedUsers={connectedUsers} usersInCall={usersInCall} inCall={inCall} isCallInitiator={isCallInitiator} createOffer={createOfferForNewUser}/>
                     <div className="logout">
                         {/*<select className="hidden" id="video-source"></select>*/}
                         {/*<select className="hidden" id="audio-source"></select>*/}

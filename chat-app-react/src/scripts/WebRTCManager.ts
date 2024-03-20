@@ -327,7 +327,7 @@ class WebRTCManager {
          *
          * @returns Promise<void>
          */
-        if (this.verbose) console.log("Received offer: ", offer.offer);
+        if (this.verbose) console.log("Received offer: ", offer);
         if (this.peers[offer.sender]) {
             console.warn("Peer connection already exists for: ", offer.sender);
             return;

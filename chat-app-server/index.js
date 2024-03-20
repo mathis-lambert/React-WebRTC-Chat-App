@@ -106,22 +106,12 @@ io.on("connection", (socket) => {
                 let member = connectedSockets.find((s) => s.id === m);
                 if (member && member.id && member.connected) {
                     console.log("Emitting to: " + member.id + " for discussion: " + data.discussion);
-                    if (member.id === socket.id) {
-                        socket.emit('initiator_update', {
-                            discussion: data.discussion, initiator: data.target
-                        });
-
-                        socket.emit('call_connected_users', {
-                            discussion: data.discussion, connected_users: calls[data.discussion].connected_users
-                        });
-                    } else {
-                        socket.to(member.id).emit('call_connected_users', {
-                            discussion: data.discussion, connected_users: calls[data.discussion].connected_users
-                        });
-                        socket.to(member.id).emit('initiator_update', {
-                            discussion: data.discussion, initiator: data.target
-                        });
-                    }
+                    io.to(member.id).emit('call_connected_users', {
+                        discussion: data.discussion, connected_users: calls[data.discussion].connected_users
+                    });
+                    io.to(member.id).emit('initiator_update', {
+                        discussion: data.discussion, initiator: data.target
+                    });
                 } else {
                     console.log("Member not found or not connected: " + m);
                 }
@@ -219,6 +209,29 @@ io.on("connection", (socket) => {
             }
         }
     })
+
+    socket.on("add_user_to_call", (data) => {
+        console.log("Adding user to call: " + data.discussion + " for user: " + data.target);
+        if (calls[data.discussion]) {
+            if (!calls[data.discussion].connected_users.includes(data.target)) {
+                calls.data.discussion.members.push(data.target);
+
+                calls[data.discussion].members.forEach((m) => {
+                    console.log("Sending connected users to: " + m + " for discussion: " + data.discussion);
+                    io.to(m).emit('call_connected_users', {
+                        discussion: data.discussion, connected_users: calls[data.discussion].connected_users
+                    });
+                })
+            } else {
+                console.log("User already in the call: " + data.target)
+            }
+        }
+    })
+
+    socket.on("remove_user_from_call", (data) => {
+        console.log("Removing user from call: " + data.discussion + " for user: " + data.target);
+        // TODO: remove user from call
+    });
 
     // receive a message from the client and send it to all clients
     socket.on("chat message", (msg) => {

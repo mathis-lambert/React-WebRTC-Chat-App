@@ -75,6 +75,14 @@ body {
   aspect-ratio: 16/9;
 }
 
+#users-list {
+  display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
 #remote-videos {
   display: flex;
   gap: 1rem;
@@ -153,6 +161,8 @@ body {
         }
       }
     }
+
+
 
     & .remote-video-options {
       position: absolute;
@@ -352,6 +362,32 @@ a.open-discussion {
 
   &.selected {
     background-color: #2222AF;
+  }
+}
+
+li.open-discussion {
+  display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem;
+    border: 1px solid #ccc;
+
+  .action-button {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0.4rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    svg {
+        width: 1rem;
+        height: 1rem;
+
+    }
   }
 }
 
