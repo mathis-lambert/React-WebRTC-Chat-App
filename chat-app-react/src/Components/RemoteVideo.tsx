@@ -1,7 +1,7 @@
 import {userIF} from "../Interfaces/Interfaces.ts";
 import {MoreHorizontal} from "react-feather";
 import WebRTCManager from "../scripts/WebRTCManager.ts";
-import {useState, useRef, useEffect, memo} from "react";
+import {memo, useEffect, useRef, useState} from "react";
 
 interface RemoteVideoIF {
     webRTCManager: WebRTCManager | null;
@@ -21,7 +21,6 @@ const RemoteVideo = ({webRTCManager, stream, user, status}: RemoteVideoIF) => {
     }, [stream]);
 
 
-
     return (
         <div className="remote-video-container">
             <video autoPlay playsInline className={"remote-video"} ref={videoRef}></video>
@@ -34,13 +33,15 @@ const RemoteVideo = ({webRTCManager, stream, user, status}: RemoteVideoIF) => {
             <div className="remote-video-options">
                 <button className="remote-video-button" onClick={() => {
                     setModalVisibility(!modalVisibility);
-                }}> <MoreHorizontal/> </button>
+                }}><MoreHorizontal/></button>
             </div>
 
             <div className={"remote-video-options-modal" + (modalVisibility ? " show" : "")}>
-                <button className="remote-video-button" onClick={() => {
-                }}>Rendre animateur
-                </button>
+                {(webRTCManager ? webRTCManager.isCallInitiator : false) && (
+                    <button className="remote-video-button" onClick={() => {
+                    }}>Rendre animateur
+                    </button>
+                )}
                 <button className="remote-video-button" disabled onClick={() => {
                 }}>Mettre en sourdine
                 </button>

@@ -366,7 +366,7 @@ class WebRTCManager {
             if (member === offer.sender) continue;
             if (this.peers[member]) continue;
             console.log("Creating offer for connected member: ", member);
-            await this.createOffer(this.callMembers, this.discussion, this.type, offer.initiator);
+            await this.createOffer(this.connectedMembers, this.discussion, this.type, offer.initiator);
         }
     }
 
@@ -486,6 +486,9 @@ class WebRTCManager {
         this.callbacks.setInCall(false);
         this.callbacks.setIsSharingScreen(false);
         this.callbacks.setRemoteStreams({});
+        this.callbacks.setCalling(false);
+        this.isCallInitiator = false;
+        this.callInitiator = "";
     }
 
     setDiscussion = (discussion: string) => {
