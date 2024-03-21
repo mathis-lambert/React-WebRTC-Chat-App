@@ -125,9 +125,19 @@ io.on("connection", (socket) => {
             let pseudo_caller = connectedSockets.find((s) => s.id === socket.id)?.username;
 
             if (socket.id === data.initiator) {
-                calls[data.discussion] = {
-                    type: data.type, members: data.members, connected_users: [socket.id], initiator: data.initiator,
-                };
+                if (!calls[data.discussion]) {
+                    console.log("Creating new call for discussion: " + data.discussion);
+                    calls[data.discussion] = {
+                        type: data.type, members: data.members, connected_users: [socket.id], initiator: data.initiator,
+                    };
+                } else {
+                    console.log("Adding user to call for discussion: " + data.discussion);
+                    calls[data.discussion].members.forEach((m) => {
+                        if (!calls[data.discussion].members.includes(m)) {
+                            calls[data.discussion].members.push(m);
+                        }
+                    });
+                }
             } else {
                 updateConnectedUsers(data, socket);
             }
@@ -171,7 +181,7 @@ io.on("connection", (socket) => {
         socket.emit('discussion_info', discussions[data]);
     });
 
-    socket.on('offer_rejected', (data) => {
+    socket.on('reject_offer', (data) => {
         console.log("Offer rejected by: " + data.target);
         socket.to(data.target).emit('offer_rejected', {
             sender: socket.id, target: data.target

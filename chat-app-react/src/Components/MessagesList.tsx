@@ -23,12 +23,7 @@ const MessagesList = ({self}: MessagesListProps) => {
     }
 
     useEffect(() => {
-        socketConn.on("get_liste_messages", (data) => {
-            console.log("Liste de messages: " + data);
-            data = JSON.parse(data);
-            setMessages(data);
-            scrollDown();
-        });
+        socketConn.emit("get_discussion_info", {});
 
         socketConn.on("discussion_info", (data: DiscussionIF) => {
             // console.log("Discussion info: " + JSON.stringify(data));
@@ -38,20 +33,10 @@ const MessagesList = ({self}: MessagesListProps) => {
             }
         });
 
-        return () => {
-            socketConn.off("get_liste_messages")
-            socketConn.off("discussion_info")
-        }
-    }, [location]);
-
-    useEffect(() => {
         socketConn.on("chat message", (data) => {
             // parse the data
             data = JSON.parse(data);
-            console.log("Message: " + JSON.stringify(data));
 
-            console.log(location.pathname.split("/")[2])
-            console.log(data.to)
             if (location.pathname.split("/")[2] !== data.to) return;
 
             // Add the message to the page
@@ -59,8 +44,10 @@ const MessagesList = ({self}: MessagesListProps) => {
         });
 
         return () => {
+            socketConn.off("get_liste_messages")
+            socketConn.off("discussion_info")
             socketConn.off("chat message");
-        };
+        }
     }, [location]);
 
     useEffect(() => {
@@ -71,8 +58,10 @@ const MessagesList = ({self}: MessagesListProps) => {
         <div className={"message-scroller"} ref={messagesRef}>
             <div id="messages">
                 {discussion && messages.map((message: MessageIF, index: number) => {
+                    console.log("Message: " + JSON.stringify(message));
                     return <div key={index} className={'message ' + (message.username === self.username ? "me" : "")}>
-                        {discussion?.members.length > 2 && message.username !== self.username && <strong>{message.username}&nbsp;: </strong>}&nbsp;{message.text}
+                        {discussion?.members.length > 2 && message.username !== self.username &&
+                            <strong>{message.username}&nbsp;: </strong>}&nbsp;{message.text}
                     </div>
                 })}
             </div>

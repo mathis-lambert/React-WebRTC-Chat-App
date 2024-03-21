@@ -87,6 +87,23 @@ class WebRTCManager {
         this.socket.on("receive_answer", this.handleAnswer);
         this.socket.on("receive_ice_candidate", this.handleIceCandidate);
         this.socket.on("hang_up", this.handleHangUp);
+        this.socket.on("offer_rejected", async (data) => {
+            console.log("Offer rejected: ", data);
+            if (this.peers[data.sender]) {
+                this.peers[data.sender].close();
+                delete this.peers[data.sender];
+            }
+
+            if (this.remoteStreams[data.sender]) {
+                delete this.remoteStreams[data.sender];
+                this.callbacks.setRemoteStreams(this.remoteStreams);
+            }
+
+            if (Object.keys(this.peers).length === 0) {
+                this.callbacks.setInCall(false);
+                await this.endCall();
+            }
+        });
         this.socket.on("call_connected_users", (data) => {
             console.log("Connected users: ", data);
             this.connectedMembers = data.connected_users;

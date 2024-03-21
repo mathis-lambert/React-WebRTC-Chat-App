@@ -154,7 +154,7 @@ const Home = ({self, connectedUsers, setLoggedIn, loggedIn}: {
                 webRTCManager ? await webRTCManager.acceptIncomingCall(accepted, modalIncomingCallData) : null;
             } else {
                 console.log("Call rejected");
-                socketConn.emit('reject_call', {target: modalIncomingCallData.sender});
+                webRTCManager ? await webRTCManager.acceptIncomingCall(accepted, modalIncomingCallData) : null;
             }
             setModalIncomingCall(false);
             setModalIncomingCallData(null);

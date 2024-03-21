@@ -22,11 +22,16 @@ const IncomingCallModal = ({modalIncomingCall, caller, acceptCall}: IncomingCall
     return (
         <>
             {modalIncomingCall && (
+                <>
                 <div id="is-calling">
                     <p>{callerName} vous appelle</p>
-                    <button id="acceptButton" onClick={() => acceptCall(true)}>Accepter</button>
-                    <button id="rejectButton" onClick={() => acceptCall(false)}>Rejeter</button>
+                    <div className="actions">
+                        <button id="acceptButton" onClick={() => acceptCall(true)}>Accepter</button>
+                        <button id="rejectButton" onClick={() => acceptCall(false)}>Rejeter</button>
+                    </div>
                 </div>
+                    <div id="modal-background" onClick={() => acceptCall(false)}></div>
+                </>
             )}
         </>
     )
